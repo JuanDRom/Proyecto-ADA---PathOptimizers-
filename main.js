@@ -71,10 +71,31 @@ document.getElementById('fileInput').addEventListener('change', async (event) =>
 const osmWaysLayer = L.layerGroup().addTo(map);
 const junctionsLayer = L.layerGroup().addTo(map);
 
-// Cargar y parsear el fichero OSM para obtener nodos y ways
-fetch('resources/chapinero.osm')
-  .then(res => res.text())
-  .then(osmText => {
+// Estado inicial
+window.latestGraph = null;
+
+function setMeshStatus(name) {
+  try {
+    const el = document.getElementById('meshName');
+    if (el) el.textContent = name || '(ninguna)';
+  } catch (e) { /* ignore */ }
+}
+
+function clearMesh() {
+  osmWaysLayer.clearLayers();
+  junctionsLayer.clearLayers();
+  window.latestGraph = null;
+  setMeshStatus('(ninguna)');
+  console.log('Malla limpiada (capas removidas)');
+}
+
+// Exponer clearMesh para uso desde consola si es necesario
+window.clearMesh = clearMesh;
+
+// Función para parsear y mostrar OSM (a partir de texto XML)
+function parseAndDisplayOSM(osmText, name = 'malla') {
+  console.log('parseAndDisplayOSM invoked for', name);
+  try {
     const parser = new DOMParser();
     const xml = parser.parseFromString(osmText, 'application/xml');
 
@@ -96,7 +117,8 @@ fetch('resources/chapinero.osm')
       if (nds.length) ways.push(nds);
     });
 
-    // Dibujar ways como polilíneas
+    // Limpiar capa anterior y dibujar ways como polilíneas
+    osmWaysLayer.clearLayers();
     ways.forEach(nds => {
       const latlngs = nds.map(ref => {
         const p = nodes.get(ref);
@@ -137,17 +159,12 @@ fetch('resources/chapinero.osm')
       const n2 = Math.hypot(v2[0], v2[1]);
       if (n1 === 0 || n2 === 0) return 180;
       let cos = dot / (n1 * n2);
-      // Clamp numeric errors
       cos = Math.max(-1, Math.min(1, cos));
       const rad = Math.acos(cos);
       return rad * 180 / Math.PI;
     }
 
-    // Umbral de ángulo (grados). Si el nodo tiene grado 2 pero el ángulo entre los dos segmentos
-    // es menor que this threshold, lo consideramos una esquina (giro pronunciado).
-    const ANGLE_THRESHOLD_DEG = 160; // 160°: debajo de esto marcamos como esquina
-
-    // Determinar esquinas: grado >= 3 OR (grado == 2 y ángulo < ANGLE_THRESHOLD_DEG)
+    const ANGLE_THRESHOLD_DEG = 160;
     const cornerRefs = [];
     adjacency.forEach((neighbors, id) => {
       const deg = neighbors.size;
@@ -160,6 +177,7 @@ fetch('resources/chapinero.osm')
       }
     });
 
+    junctionsLayer.clearLayers();
     cornerRefs.forEach(ref => {
       const p = nodes.get(ref);
       if (!p) return;
@@ -174,14 +192,14 @@ fetch('resources/chapinero.osm')
       junctionsLayer.addLayer(marker);
     });
 
-    console.log(`OSM: nodos=${nodes.size}, ways=${ways.length}, esquinas=${cornerRefs.length}`);
+    console.log(`${name}: nodos=${nodes.size}, ways=${ways.length}, esquinas=${cornerRefs.length}`);
+    setMeshStatus(name);
 
     // Preparar estructura JSON del grafo para exportar o para uso posterior
     const graph = {
       nodes: Array.from(nodes.entries()).map(([id, p]) => ({ id, lat: p.lat, lon: p.lon })),
       edges: []
     };
-    // Añadir aristas únicas
     const seenEdges = new Set();
     adjacency.forEach((neighbors, id) => {
       neighbors.forEach(nbr => {
@@ -195,37 +213,66 @@ fetch('resources/chapinero.osm')
       });
     });
 
-    // Añadir control en el mapa para descargar el grafo como JSON
-    const exportControl = L.control({ position: 'topright' });
-    exportControl.onAdd = function () {
-      const div = L.DomUtil.create('div', 'export-graph-control');
-      div.style.background = 'white';
-      div.style.padding = '6px';
-      div.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
-      const btn = L.DomUtil.create('button', '', div);
-      btn.textContent = 'Exportar grafo JSON';
-      btn.style.cursor = 'pointer';
-      btn.onclick = () => {
-        const blob = new Blob([JSON.stringify(graph)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'graph_chapinero.json';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
+    // Añadir control para exportar grafo (si no existe ya)
+    if (!document.querySelector('.export-graph-control')) {
+      const exportControl = L.control({ position: 'topright' });
+      exportControl.onAdd = function () {
+        const div = L.DomUtil.create('div', 'export-graph-control');
+        div.style.background = 'white';
+        div.style.padding = '6px';
+        div.style.boxShadow = '0 1px 4px rgba(0,0,0,0.3)';
+        const btn = L.DomUtil.create('button', '', div);
+        btn.textContent = 'Exportar grafo JSON';
+        btn.style.cursor = 'pointer';
+        btn.onclick = () => {
+          const blob = new Blob([JSON.stringify(graph)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${name}_graph.json`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        };
+        return div;
       };
-      return div;
-    };
-    exportControl.addTo(map);
-  })
-  .catch(err => console.error('Error al cargar/parsar resources/chapinero.osm:', err));
+      exportControl.addTo(map);
+    }
+
+    // Guardar grafo en window por si otros scripts lo necesitan
+    window.latestGraph = graph;
+    console.log('latestGraph actualizado en window.latestGraph');
+  } catch (err) {
+    console.error('Error parseando OSM:', err);
+  }
+}
+
+// Listener del input de malla en la página
+const meshInput = document.getElementById('meshInput');
+if (meshInput) {
+  meshInput.addEventListener('change', async (ev) => {
+    const f = ev.target.files[0];
+    if (!f) return;
+    try {
+      const text = await f.text();
+      // Limpiar antes de cargar nueva malla
+      clearMesh();
+      parseAndDisplayOSM(text, f.name);
+    } catch (err) {
+      console.error('Error leyendo archivo de malla:', err);
+    }
+  });
+}
+
+// Listener para el botón Limpiar malla
+const clearBtn = document.getElementById('clearMeshBtn');
+if (clearBtn) clearBtn.addEventListener('click', () => clearMesh());
 
 // Control de capas (puntos, vías OSM y esquinas)
 const overlays = {
   'Puntos (points.tsv)': pointsLayer,
-  'Vías OSM (chapinero.osm)': osmWaysLayer,
+  'Vías OSM (malla)': osmWaysLayer,
   'Esquinas / Intersecciones': junctionsLayer
 };
 

@@ -38,6 +38,16 @@
     <input type="file" id="fileInput" accept=".tsv">
   </div>
 
+  <!-- Contenedor del botón de carga para mallas OSM/JSON -->
+  <div id="meshInputContainer" style="position: absolute; top: 80px; left: 10px; z-index:1000; background: white; padding:8px 12px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.3); font-family:sans-serif;">
+    <label for="meshInput"><b>📁 Subir malla (.osm / .json):</b></label><br>
+    <input type="file" id="meshInput" accept=".osm,.xml,.json">
+    <div style="margin-top:6px; font-size:12px; color:#333">O usa la API: <code>loadOSMFromURL('resources/malla1.osm')</code></div>
+    <div style="margin-top:6px; display:flex; gap:8px; align-items:center;">
+      <button id="clearMeshBtn" style="font-size:12px;">Limpiar malla</button>
+      <div id="meshStatus" style="font-size:12px; color:#444">Malla: <span id="meshName">(ninguna)</span></div>
+    </div>
+  </div>
   <!-- Contenedor del mapa -->
   <div id="map"></div>
 
