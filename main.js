@@ -424,7 +424,7 @@ async function runAllAlgorithms() {
     const t1Start = performance.now();
     const bf = bruteForceTSP(selected);
     const t1End = performance.now();
-    const time1 = ((t1End - t1Start) / 1000).toFixed(3);
+    const time1 = (t1End - t1Start).toFixed(2);
     
     if (bf.tour) {
         drawRoute(bf.tour, selected, routeLayer1, '#FF0000', 'Brute Force');
@@ -433,7 +433,7 @@ async function runAllAlgorithms() {
             time: time1,
             distance: (bf.distance / 1000).toFixed(3)
         });
-        console.log(`✅ Brute Force: ${time1}s, ${(bf.distance/1000).toFixed(2)} km`);
+        console.log(`✅ Brute Force: ${time1}ms, ${(bf.distance/1000).toFixed(2)} km`);
     }
     
     // 2. Nearest Neighbor
@@ -441,7 +441,7 @@ async function runAllAlgorithms() {
     const t2Start = performance.now();
     const nn = nearestNeighborTSP(selected);
     const t2End = performance.now();
-    const time2 = ((t2End - t2Start) / 1000).toFixed(3);
+    const time2 = (t2End - t2Start).toFixed(2);
     
     if (nn.tour) {
         drawRoute(nn.tour, selected, routeLayer2, '#00AA00', 'Nearest Neighbor');
@@ -450,7 +450,7 @@ async function runAllAlgorithms() {
             time: time2,
             distance: (nn.distance / 1000).toFixed(3)
         });
-        console.log(`✅ Nearest Neighbor: ${time2}s, ${(nn.distance/1000).toFixed(2)} km`);
+        console.log(`✅ Nearest Neighbor: ${time2}ms, ${(nn.distance/1000).toFixed(2)} km`);
     }
     
     // 3. 2-Opt
@@ -458,7 +458,7 @@ async function runAllAlgorithms() {
     const t3Start = performance.now();
     const twoOpt = twoOptTSP(selected);
     const t3End = performance.now();
-    const time3 = ((t3End - t3Start) / 1000).toFixed(3);
+    const time3 = (t3End - t3Start).toFixed(2);
     
     if (twoOpt.tour) {
         drawRoute(twoOpt.tour, selected, routeLayer3, '#0000FF', '2-Opt');
@@ -467,7 +467,7 @@ async function runAllAlgorithms() {
             time: time3,
             distance: (twoOpt.distance / 1000).toFixed(3)
         });
-        console.log(`✅ 2-Opt: ${time3}s, ${(twoOpt.distance/1000).toFixed(2)} km`);
+        console.log(`✅ 2-Opt: ${time3}ms, ${(twoOpt.distance/1000).toFixed(2)} km`);
     }
     
     // Mostrar resultados en UI
@@ -486,7 +486,7 @@ function displayResults(results) {
         div.style.borderRadius = '4px';
         div.innerHTML = `
             <strong>${r.name}</strong><br>
-            ⏱️ Tiempo: ${r.time}s<br>
+            ⏱️ Tiempo: ${r.time} ms<br>
             📏 Distancia: ${r.distance} km
         `;
         container.appendChild(div);
@@ -649,17 +649,6 @@ fetch('resources/chapinero.osm')
     })
     .catch(err => console.error('❌ Error:', err));
 
-// Control de capas
-const overlays = {
-    'Puntos originales (azul)': pointsLayer,
-    'Puntos integrados (verde)': integratedPointsLayer,
-    'Vías OSM': osmWaysLayer,
-    'Ruta Brute Force (rojo)': routeLayer1,
-    'Ruta Nearest Neighbor (verde)': routeLayer2,
-    'Ruta 2-Opt (azul)': routeLayer3
-};
-L.control.layers(null, overlays, { collapsed: false }).addTo(map);
-
 // Event listeners - esperar a que el DOM cargue
 window.addEventListener('DOMContentLoaded', () => {
     const runBtn = document.getElementById('runAlgorithms');
@@ -668,3 +657,4 @@ window.addEventListener('DOMContentLoaded', () => {
     if (runBtn) runBtn.addEventListener('click', runAllAlgorithms);
     if (exportBtn) exportBtn.addEventListener('click', exportResults);
 });
+
