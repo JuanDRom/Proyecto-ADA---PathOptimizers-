@@ -5,146 +5,7 @@
   <title>TSP - Path Optimizers</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗺️</text></svg>">
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-    
-    #map {
-      height: 100vh;
-      width: 100%;
-    }
-    
-    .controlBox {
-      position: absolute;
-      z-index: 1000;
-      background: white;
-      padding: 12px 16px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-      font-size: 14px;
-    }
-    
-    #fileControl {
-      bottom: 10px;
-      left: 10px;
-      max-width: 300px;
-    }
-    
-    #algorithmsControl {
-      bottom: 10px;
-      right: 10px;
-      max-width: 300px;
-    }
-    
-    #resultsContainer {
-      top: 10px;
-      left: 10px;
-      max-width: 280px;
-      max-height: 60vh;
-      overflow-y: auto;
-    }
-    
-    h3 {
-      margin: 0 0 12px 0;
-      font-size: 16px;
-      color: #333;
-      border-bottom: 2px solid #007bff;
-      padding-bottom: 6px;
-    }
-    
-    label {
-      display: block;
-      margin-bottom: 6px;
-      font-weight: 600;
-      color: #555;
-    }
-    
-    input[type="file"] {
-      display: block;
-      margin-bottom: 8px;
-      font-size: 13px;
-    }
-    
-    input[type="number"] {
-      width: 80px;
-      padding: 6px 8px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      font-size: 14px;
-    }
-    
-    button {
-      padding: 8px 16px;
-      border: none;
-      cursor: pointer;
-      border-radius: 6px;
-      background: #007bff;
-      color: white;
-      font-size: 14px;
-      font-weight: 600;
-      transition: background 0.2s;
-      margin-top: 8px;
-      width: 100%;
-    }
-    
-    button:hover:not(:disabled) {
-      background: #0056b3;
-    }
-    
-    button:active:not(:disabled) {
-      background: #004085;
-    }
-    
-    button:disabled {
-      background: #ccc;
-      cursor: not-allowed;
-      opacity: 0.6;
-    }
-    
-    .btn-secondary {
-      background: #28a745;
-    }
-    
-    .btn-secondary:hover:not(:disabled) {
-      background: #218838;
-    }
-    
-    .btn-secondary:disabled {
-      background: #ccc;
-    }
-    
-    .result-item {
-      margin-bottom: 10px;
-      padding: 10px;
-      background: #f8f9fa;
-      border-radius: 6px;
-      border-left: 4px solid #007bff;
-    }
-    
-    .result-item strong {
-      display: block;
-      margin-bottom: 4px;
-      color: #333;
-      font-size: 15px;
-    }
-    
-    .result-item div {
-      font-size: 13px;
-      color: #666;
-      line-height: 1.6;
-    }
-    
-    .input-group {
-      margin-bottom: 12px;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <!-- Control de carga de archivo -->
@@ -154,6 +15,8 @@
       <label for="fileInput">Archivo de puntos (.tsv):</label>
       <input type="file" id="fileInput" accept=".tsv">
     </div>
+    <label for="fileInput">Archivo de localidades (.osm):</label>
+    <input type="file" id="osmInput" accept=".osm,application/xml">
   </div>
 
   <!-- Control de algoritmos -->
@@ -167,10 +30,40 @@
     <button id="exportBtn" class="btn-secondary">💾 Exportar GeoJSON</button>
   </div>
 
+  <!-- Panel de capas (nuevo - derecha arriba) -->
+  <div id="layersControl" class="controlBox" style="top: 10px; right: 10px; max-width: 250px;">
+    <h3>🗂️ Capas del Mapa</h3>
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <label style="display: flex; align-items: center; gap: 8px; font-weight: normal;">
+        <input type="checkbox" id="toggleOriginalPoints" checked>
+        <span>Puntos originales (azul)</span>
+      </label>
+      <label style="display: flex; align-items: center; gap: 8px; font-weight: normal;">
+        <input type="checkbox" id="toggleIntegratedPoints" checked>
+        <span>Puntos integrados (verde)</span>
+      </label>
+      <label style="display: flex; align-items: center; gap: 8px; font-weight: normal;">
+        <input type="checkbox" id="toggleOSM" checked>
+        <span>Vías OSM</span>
+      </label>
+      <label style="display: flex; align-items: center; gap: 8px; font-weight: normal;">
+        <input type="checkbox" id="toggleBF" checked>
+        <span>Ruta Brute Force (rojo)</span>
+      </label>
+      <label style="display: flex; align-items: center; gap: 8px; font-weight: normal;">
+        <input type="checkbox" id="toggleNN" checked>
+        <span>Ruta Nearest Neighbor (verde)</span>
+      </label>
+      <label style="display: flex; align-items: center; gap: 8px; font-weight: normal;">
+        <input type="checkbox" id="toggle2Opt" checked>
+        <span>Ruta 2-Opt (azul)</span>
+      </label>
+    </div>
+  </div>
+
   <!-- Panel de resultados -->
   <div id="resultsContainer" class="controlBox">
-    <h3>📊 Resultados</h3>
-    <p style="color:#999; font-size:13px;">Los resultados aparecerán aquí después de ejecutar los algoritmos.</p>
+    <!-- Se llenará dinámicamente con initResultsPanel() -->
   </div>
 
   <!-- Mapa -->
